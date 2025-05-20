@@ -115,7 +115,7 @@ public class Main implements Callable<Integer> {
 
             // Log problem details
             LOGGER.info("Received test problem: id={}, orders={}", problem.getTestId(), problem.getOrderCount());
-            System.out.printf("Received test problem with %d orders (ID: %s)%n",
+            LOGGER.info("Received test problem with {} orders (ID: {})",
                     problem.getOrderCount(), problem.getTestId());
 
             // Run simulation
