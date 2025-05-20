@@ -1,0 +1,140 @@
+plugins {
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+group 'com.css'
+version '1.0'
+
+apply plugin: "java"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // https://picocli.info/
+    implementation 'info.picocli:picocli:4.7.0'
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+    // https://github.com/simple-http/simple-http
+    implementation 'com.simple-http:simple-http:1.4'
+    implementation 'org.slf4j:slf4j-jdk14:2.0.3'
+
+    // Add Lombok dependencies
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    // JUnit and Mockito for mocking in tests
+    testImplementation 'org.mockito:mockito-core:4.5.1'
+    testImplementation 'org.assertj:assertj-core:3.23.1'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+ext {
+    javaMainClass = "com.css.challenge.Main"
+}
+
+test {
+    useJUnit()
+
+    // Force tests to run
+    outputs.upToDateWhen { false }
+
+    // Use the test source set
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    // Print test file paths being considered
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: $descriptor")
+    }
+
+    testLogging {
+        events = ["passed", "skipped", "failed"]
+        exceptionFormat =  "full"
+        showStandardStreams = true
+    }
+
+    // Print directory info
+    doFirst {
+        println "Test source directories: ${sourceSets.test.java.srcDirs}"
+        println "Test class directory: ${sourceSets.test.java.classesDirectory}"
+        println "Test include patterns: ${includes}"
+    }
+
+    afterSuite { desc, result ->
+        if (!desc.parent) {
+            println "\nResults: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+        }
+    }
+}
+
+// Configure the shadowJar task
+tasks.named('shadowJar') {
+    //archiveClassifier = ''
+    archiveBaseName = 'kitchen-fulfillment'
+    archiveClassifier = ''
+    archiveVersion = ''
+}
+
+// Fix the task dependencies for Gradle 8+
+tasks.named('distZip') {
+    dependsOn(tasks.named('shadowJar'))
+}
+
+tasks.named('distTar') {
+    dependsOn(tasks.named('shadowJar'))
+}
+
+tasks.named('startScripts') {
+    dependsOn(tasks.named('shadowJar'))
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.css.challenge.Main'
+    }
+    enabled = true
+    archiveClassifier.set('original')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass.set(javaMainClass)
+}
+
+sourceSets {
+    test {
+        java {
+            srcDirs = ['src/test/java']
+            include '**/*Test.java'        // Include files ending with Test.java
+            include '**/*Tests.java'       // Include files ending with Tests.java
+            include '**/*TestCase.java'    // Include files ending with TestCase.java
+        }
+        resources {
+            srcDirs = ['src/test/resources']
+        }
+    }
+}
+
+// Add this to see what source sets Gradle is using
+tasks.register('printSourceSetInfo') {
+    doLast {
+        sourceSets.configureEach { sourceSet ->
+            println sourceSet.name
+            println "Java sources: ${sourceSet.java.srcDirs}"
+            println "Resources: ${sourceSet.resources.srcDirs}"
+            println "-----"
+        }
+    }
+}
+assemble.dependsOn(shadowJar)
